@@ -12,6 +12,11 @@ obj_keys = []
 for obj in response['Contents']:
     obj_keys.append(obj['Key'])
 
+while response['IsTruncated'] == True:
+    response = s3_client.list_objects_v2(Bucket='nba-data-pipeline-raw', Prefix='2024-25/', ContinuationToken=response['NextContinuationToken'])
+    for obj in response['Contents']:                                                    
+      obj_keys.append(obj['Key']) 
+
 # Read each JSON file from S3 and extract the play-by-play actions into DataFrames
 df_list = []
 
