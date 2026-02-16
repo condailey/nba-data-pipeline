@@ -22,6 +22,7 @@ for index, row in df.iterrows():
     cur.execute("""
                 INSERT INTO NBA_DATA (gameId, clock, period, teamId, personId, playerName, xLegacy, yLegacy, shotDistance, shotResult, isFieldGoal, scoreHome, scoreAway, pointsTotal, location, description, actionType, shotValue, actionId)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (gameId, actionId) DO NOTHING;
                 """,(row['gameId'], row['clock'], row['period'], row['teamId'], row['personId'], row['playerName'],
                      row['xLegacy'], row['yLegacy'], row['shotDistance'], row['shotResult'], row['isFieldGoal'],
                      row['scoreHome'], row['scoreAway'], row['pointsTotal'], row['location'], row['description'],
