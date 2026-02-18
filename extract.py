@@ -22,13 +22,14 @@ unique_sorted_games_id = sorted_games_id["GAME_ID"].unique()
 
 s3 = boto3.client('s3')
 
+# Retry loop: re-runs extraction after cooldown if rate limited (10 consecutive failures)
 while True:
 
-    success = 0
     failure = 0
 
     # Pull play-by-play for each game and upload raw JSON to S3
     for i, game in enumerate(unique_sorted_games_id):
+        # Skip games already in S3
         try:
             s3.head_object(Bucket="nba-data-pipeline-raw", Key=f'2024-25/{game}.json')
             continue
@@ -53,6 +54,7 @@ while True:
                 logging.error(f"Reached {failure} consecutive failures. Killing script.")
                 break
     else:
+        # for loop completed without break — all games extracted
         break
 
     logging.info("Cooling down for 5 minutes before retrying")
