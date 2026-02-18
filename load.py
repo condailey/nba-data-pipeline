@@ -1,5 +1,4 @@
 import psycopg2
-import pandas as pd
 import os
 import dotenv
 
@@ -16,18 +15,12 @@ DB_PORT = os.getenv("DB_PORT")
 conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, host=DB_HOST, password=DB_PASSWORD, port=DB_PORT)
 cur = conn.cursor()
 
-# Read transformed CSV and insert each row into the nba_data table
-df = pd.read_csv('output.csv')
-for index, row in df.iterrows():
-    cur.execute("""
-                INSERT INTO NBA_DATA (gameId, clock, period, teamId, personId, playerName, xLegacy, yLegacy, shotDistance, shotResult, isFieldGoal, scoreHome, scoreAway, pointsTotal, location, description, actionType, shotValue, actionId)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (gameId, actionId) DO NOTHING;
-                """,(row['gameId'], row['clock'], row['period'], row['teamId'], row['personId'], row['playerName'],
-                     row['xLegacy'], row['yLegacy'], row['shotDistance'], row['shotResult'], row['isFieldGoal'],
-                     row['scoreHome'], row['scoreAway'], row['pointsTotal'], row['location'], row['description'],
-                     row['actionType'], row['shotValue'], row['actionId']))
+# Truncate table and bulk load CSV using Postgres COPY (faster than row-by-row inserts)
+cur.execute("TRUNCATE nba_data;")
 
-conn.commit()
-cur.close()
+with open('output.csv', 'r') as f:
+    cur.copy_expert("COPY nba_data FROM STDIN WITH CSV HEADER", f)
+
+conn.commit()                                                                                         
+cur.close()     
 conn.close()
