@@ -1,3 +1,5 @@
+"""Extract NBA play-by-play data from the NBA API and upload to S3."""
+
 from nba_api.stats.endpoints import playbyplayv3, leaguegamefinder
 import boto3
 import time
@@ -5,57 +7,53 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s - %(message)s')
 
-# Query all regular season games for 2024-25 (league_id '00' = NBA)
-gamefinder = leaguegamefinder.LeagueGameFinder(
-    season_nullable='2024-25',
-    league_id_nullable='00',
-    season_type_nullable='Regular Season'
-)
+BUCKET = 'nba-data-pipeline-raw'
+SEASONS = ['2024-25', '2025-26']
 
-# Returns one row per team per game, so each game_id appears twice
-games = gamefinder.get_data_frames()[0]
 
-sorted_games_id = games.sort_values("GAME_ID")
+def extract():
+    """Pull play-by-play JSON for each game and upload to S3. Skips games already in S3."""
+    s3 = boto3.client('s3')
+    new_game_list = []
 
-# Deduplicate so each game_id appears once
-unique_sorted_games_id = sorted_games_id["GAME_ID"].unique()
+    for season in SEASONS:
+        game_ids = _get_game_ids(season)
+        logging.info(f"Found {len(game_ids)} games for {season}")
 
-s3 = boto3.client('s3')
+        for i, game_id in enumerate(game_ids):
+            # Skip games already extracted
+            try:
+                s3.head_object(Bucket=BUCKET, Key=f'{season}/{game_id}.json')
+                continue
+            except s3.exceptions.ClientError:
+                pass
 
-# Retry loop: re-runs extraction after cooldown if rate limited (10 consecutive failures)
-while True:
+            try:
+                pbp = playbyplayv3.PlayByPlayV3(game_id=game_id)
+                s3.put_object(
+                    Bucket=BUCKET,
+                    Key=f'{season}/{game_id}.json',
+                    Body=pbp.get_json()
+                )
+                new_game_list.append(f'{season}/{game_id}.json')
+                logging.info(f"Extracted game {i + 1}/{len(game_ids)} ({game_id})")
+                time.sleep(1)
+            except Exception as e:
+                logging.error(f"Failed to extract game {game_id}: {e}")
 
-    failure = 0
+    return new_game_list
 
-    # Pull play-by-play for each game and upload raw JSON to S3
-    for i, game in enumerate(unique_sorted_games_id):
-        # Skip games already in S3
-        try:
-            s3.head_object(Bucket="nba-data-pipeline-raw", Key=f'2024-25/{game}.json')
-            continue
-        except s3.exceptions.ClientError:
-            pass
-        try:
-            pbp = playbyplayv3.PlayByPlayV3(game_id=f'{game}')
-            pbpJSON = pbp.get_json()
-            s3.put_object(
-                Bucket="nba-data-pipeline-raw",
-                Key=f'2024-25/{game}.json',
-                Body=pbpJSON
-            )
-            logging.info(f"Extracted game {i + 1}/{len(unique_sorted_games_id)} ({game})")
-            success += 1
-            failure = 0
-            time.sleep(2)  # Rate limit
-        except Exception as e:
-            logging.error(f"Failed to fetch data on game {game}: {e}")
-            failure += 1
-            if failure >= 10:
-                logging.error(f"Reached {failure} consecutive failures. Killing script.")
-                break
-    else:
-        # for loop completed without break — all games extracted
-        break
 
-    logging.info("Cooling down for 5 minutes before retrying")
-    time.sleep(300)
+def _get_game_ids(season):
+    """Fetch unique game IDs for a given NBA season."""
+    gamefinder = leaguegamefinder.LeagueGameFinder(
+        season_nullable=season,
+        league_id_nullable='00',
+        season_type_nullable='Regular Season'
+    )
+    games = gamefinder.get_data_frames()[0]
+    return sorted(games['GAME_ID'].unique())
+
+
+if __name__ == '__main__':
+    extract()

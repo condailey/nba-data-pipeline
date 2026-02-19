@@ -1,26 +1,32 @@
+"""Load transformed CSV data into PostgreSQL on RDS."""
+
 import psycopg2
 import os
-import dotenv
 
-dotenv.load_dotenv()
+OUTPUT_PATH = '/tmp/output.csv'
 
-# Load database credentials from .env
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_HOST = os.getenv("DB_HOST")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_PORT = os.getenv("DB_PORT")
 
-# Connect to Postgres on RDS
-conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, host=DB_HOST, password=DB_PASSWORD, port=DB_PORT)
-cur = conn.cursor()
+def load(truncate=False):
+    """Load CSV into the nba_data table. Optionally truncate the table first."""
+    conn = psycopg2.connect(
+        dbname=os.environ['DB_NAME'],
+        user=os.environ['DB_USER'],
+        host=os.environ['DB_HOST'],
+        password=os.environ['DB_PASSWORD'],
+        port=os.environ['DB_PORT']
+    )
+    cur = conn.cursor()
 
-# Truncate table and bulk load CSV using Postgres COPY (faster than row-by-row inserts)
-cur.execute("TRUNCATE nba_data;")
+    if truncate:
+        cur.execute("TRUNCATE nba_data")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return
 
-with open('output.csv', 'r') as f:
-    cur.copy_expert("COPY nba_data FROM STDIN WITH CSV HEADER", f)
+    with open(OUTPUT_PATH, 'r') as f:
+        cur.copy_expert("COPY nba_data FROM STDIN WITH CSV HEADER", f)
 
-conn.commit()                                                                                         
-cur.close()     
-conn.close()
+    conn.commit()
+    cur.close()
+    conn.close()
