@@ -1,4 +1,4 @@
--- Play-by-play data for NBA games (2024-25 season)
+-- Play-by-play data for NBA games (2024-25, 2025-26 seasons)
 -- Primary key is composite: gameId + actionId uniquely identifies each play
 CREATE TABLE nba_data (
     gameId VARCHAR,
