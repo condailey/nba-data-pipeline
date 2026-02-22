@@ -5,7 +5,8 @@ import logging
 from transform import transform
 from load import load
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s - %(message)s')
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 BUCKET = 'nba-data-pipeline-raw'
 BATCH_SIZE = 100
@@ -23,15 +24,15 @@ def lambda_handler(event, context):
             if obj['Key'].endswith('.json'):
                 game_keys.append(obj['Key'])
 
-    logging.info(f"Found {len(game_keys)} games to process")
+    logger.info(f"Found {len(game_keys)} games to process")
 
     # Full refresh: truncate once, then load each batch
     load(truncate=True)
 
     for i in range(0, len(game_keys), BATCH_SIZE):
         batch = game_keys[i:i + BATCH_SIZE]
-        logging.info(f"Processing batch {i // BATCH_SIZE + 1} ({len(batch)} games)")
+        logger.info(f"Processing batch {i // BATCH_SIZE + 1} ({len(batch)} games)")
         transform(batch)
         load(truncate=False)
 
-    logging.info("Done")
+    logger.info("Done")

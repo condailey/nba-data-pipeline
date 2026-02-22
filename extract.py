@@ -21,7 +21,6 @@ def extract():
         logging.info(f"Found {len(game_ids)} games for {season}")
 
         for i, game_id in enumerate(game_ids):
-            # Skip games already extracted
             try:
                 s3.head_object(Bucket=BUCKET, Key=f'{season}/{game_id}.json')
                 continue
@@ -44,15 +43,23 @@ def extract():
     return new_game_list
 
 
-def _get_game_ids(season):
+def _get_game_ids(season, retries=3):
     """Fetch unique game IDs for a given NBA season."""
-    gamefinder = leaguegamefinder.LeagueGameFinder(
-        season_nullable=season,
-        league_id_nullable='00',
-        season_type_nullable='Regular Season'
-    )
-    games = gamefinder.get_data_frames()[0]
-    return sorted(games['GAME_ID'].unique())
+    for attempt in range(retries):
+        try:
+            gamefinder = leaguegamefinder.LeagueGameFinder(
+                season_nullable=season,
+                league_id_nullable='00',
+                season_type_nullable='Regular Season',
+                timeout=120
+            )
+            games = gamefinder.get_data_frames()[0]
+            return sorted(games['GAME_ID'].unique())
+        except Exception as e:
+            logging.warning(f"Attempt {attempt + 1}/{retries} failed for {season}: {e}")
+            if attempt < retries - 1:
+                time.sleep(5)
+    raise RuntimeError(f"Failed to fetch game IDs for {season} after {retries} attempts")
 
 
 if __name__ == '__main__':

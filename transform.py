@@ -42,4 +42,6 @@ def transform(game_keys):
     cleaned[['scoreHome', 'scoreAway']] = cleaned.groupby('gameId')[['scoreHome', 'scoreAway']].ffill()
     cleaned[['scoreHome', 'scoreAway']] = cleaned[['scoreHome', 'scoreAway']].fillna('0').astype(int)
 
+    cleaned = cleaned.drop_duplicates(subset=['gameId', 'actionId'], keep ='first')
+
     cleaned.to_csv(OUTPUT_PATH, index=False)
