@@ -18,3 +18,6 @@ output.csv
 
 # Project docs
 claude.md
+
+# Extract logs
+extract.log
