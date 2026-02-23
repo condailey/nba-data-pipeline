@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s - %(me
 
 BUCKET = 'nba-data-pipeline-raw'
 SEASONS = ['2024-25', '2025-26']
-
+USER_AGENT = 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36'
 
 def extract():
     """Pull play-by-play JSON for each game and upload to S3. Skips games already in S3."""
@@ -28,11 +28,11 @@ def extract():
                 pass
 
             try:
-                pbp = playbyplayv3.PlayByPlayV3(game_id=game_id)
+                pbp = playbyplayv3.PlayByPlayV3(game_id=game_id, headers={"User-Agent": USER_AGENT})
                 s3.put_object(
                     Bucket=BUCKET,
                     Key=f'{season}/{game_id}.json',
-                    Body=pbp.get_json()
+                    Body=pbp.get_json(),
                 )
                 new_game_list.append(f'{season}/{game_id}.json')
                 logging.info(f"Extracted game {i + 1}/{len(game_ids)} ({game_id})")
@@ -51,6 +51,7 @@ def _get_game_ids(season, retries=3):
                 season_nullable=season,
                 league_id_nullable='00',
                 season_type_nullable='Regular Season',
+                headers={"User-Agent": USER_AGENT},
                 timeout=120
             )
             games = gamefinder.get_data_frames()[0]
@@ -64,3 +65,4 @@ def _get_game_ids(season, retries=3):
 
 if __name__ == '__main__':
     extract()
+    
