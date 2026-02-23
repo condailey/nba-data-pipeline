@@ -84,7 +84,7 @@ Five charts connected to the live PostgreSQL database:
 2. Halftime Lead vs Win Probability (line)
 3. Shot Chart (scatter)
 3. Top 25 Clutch Scorers (bar)
-4. Top 5 Teams — Scoring by Quarter (bar)
+4. Top 5 Teams: Scoring by Quarter (bar)
 
 ## Setup
 1. Clone the repository
