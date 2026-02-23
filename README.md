@@ -79,13 +79,12 @@ CREATE TABLE nba_data (
 ## Metabase Dashboard
 ![NBA Analytics Dashboard](dashboardScreenshot.png)
 
-Six charts connected to the live PostgreSQL database:
-1. Shot Chart (scatter)
-2. FG% by Zone (bar)
+Five charts connected to the live PostgreSQL database:
+1. FG% by Zone (bar)
+2. Halftime Lead vs Win Probability (line)
+3. Shot Chart (scatter)
 3. Top 25 Clutch Scorers (bar)
 4. Top 5 Teams — Scoring by Quarter (bar)
-5. Scoring by Quarter (bar)
-6. Halftime Lead vs Win Probability (line)
 
 ## Setup
 1. Clone the repository
