@@ -36,3 +36,4 @@ def lambda_handler(event, context):
         load(truncate=False)
 
     logger.info("Done")
+
